@@ -1,0 +1,92 @@
+#! /bin/bash
+
+runner() {
+
+	bash -c "$1 &> /dev/null &"
+
+}
+
+prx() {
+	python3 /home/mast/prox/prox.py
+}
+
+range () {
+	if [[ $1 && $2 ]];then
+		start=$1
+		end=$2
+	else
+		start=0
+		end=$1
+	fi
+	for (( start ; start <= end ; start++ ));do
+		printf "$start "
+	done
+}
+
+chrome() {
+	runner ./pkg/BurpSuiteCommunity/burpbrowser/110.0.5481.177/chrome
+}
+
+telegram() {
+	runner /home/mast/pkg/Telegram/Telegram 
+}
+
+music() {
+	runner "vlc /home/mast/Music"
+}
+
+funcs()
+{
+	grep -Ei "^(void|int|char|string)" $1
+}
+
+connectwifi()
+{
+	iwctl station wlan0 scan
+	iwctl station wlan0 get-networks
+	iwctl station wlan0 connect db
+}
+
+mv2un()
+{
+	range () 
+	{ 
+		if [[ -n $1 && -n $2 ]]; then
+			start=$1;
+			end=$2;
+		else
+			start=0;
+			end=$1;
+		fi;
+		for ((start ; start <= end ; start++ ))
+		do
+			printf "$start ";
+		done
+	}
+
+	if [[ $1 ]] ;then
+		arg1=$1
+	else
+		arg1=$(pwd)
+	fi
+
+	len=$(ls -1 $arg1 | wc -l)
+	declare -a dir_content
+
+	for i in $(range 1 $len); do
+		elem=$(ls -1 $arg1 | head -n$i | tail -n1)
+		dir_content[$i]+="$elem"
+	done
+
+	for i in ${!dir_content[@]} ;do
+
+		# replace underline with space
+		rep_un=$( printf "${dir_content[$i]}" | sed 's/\s/_/g') 	
+		
+		# use mv command to make changes
+		mv -nT "${dir_content[$i]}" $rep_un
+
+	done
+
+}
+

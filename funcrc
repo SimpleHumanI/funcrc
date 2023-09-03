@@ -1,13 +1,11 @@
 #! /bin/bash
 
 runner() {
-
-	bash -c "$1 &> /dev/null &"
-
-}
-
-prx() {
-	python3 /home/mast/prox/prox.py
+	if [[ $(type -P $1)	]] ;then
+		bash -c "$1 &> /dev/null &"
+	else
+		printf "runner : command not found\n"
+	fi
 }
 
 range () {
@@ -23,16 +21,12 @@ range () {
 	done
 }
 
-chrome() {
-	runner ./pkg/BurpSuiteCommunity/burpbrowser/110.0.5481.177/chrome
-}
-
 telegram() {
-	runner /home/mast/pkg/Telegram/Telegram 
+	runner /home/mast/pkg/Telegram/telegram 
 }
 
 music() {
-	runner "vlc /home/mast/Music"
+	runner "vlc /home/mast/music" ; exit
 }
 
 funcs()
@@ -40,42 +34,28 @@ funcs()
 	grep -Ei "^(void|int|char|string)" $1
 }
 
-connectwifi()
+iwdfi()
 {
 	iwctl station wlan0 scan
 	iwctl station wlan0 get-networks
 	iwctl station wlan0 connect db
 }
 
+# change space to underline
 mv2un()
 {
-	range () 
-	{ 
-		if [[ -n $1 && -n $2 ]]; then
-			start=$1;
-			end=$2;
-		else
-			start=0;
-			end=$1;
-		fi;
-		for ((start ; start <= end ; start++ ))
-		do
-			printf "$start ";
-		done
-	}
-
 	if [[ $1 ]] ;then
-		arg1=$1
+		path=$(ls -1Fd $1)
 	else
-		arg1=$(pwd)
+		path=$(ls -1Fd ${PWD})
 	fi
 
-	len=$(ls -1 $arg1 | wc -l)
+	len=$(ls -1 $path | wc -l)
 	declare -a dir_content
 
 	for i in $(range 1 $len); do
-		elem=$(ls -1 $arg1 | head -n$i | tail -n1)
-		dir_content[$i]+="$elem"
+		elem=$(ls -1 $path | head -n$i | tail -n1)
+		dir_content[$i]+="$path$elem"
 	done
 
 	for i in ${!dir_content[@]} ;do
@@ -90,3 +70,233 @@ mv2un()
 
 }
 
+# change upper case to lower case
+mv2lc()
+{
+	len=$(ls -1 $arg1 | wc -l)
+	declare -a dir_content
+
+	for i in $(range 1 $len); do
+		elem=$(ls -1 $arg1 | head -n$i | tail -n1)
+		dir_content[$i]+="$elem"
+	done
+
+	for i in ${!dir_content[@]} ;do
+
+		# replace uppercase with lowercase
+		rep_un=$( printf "${dir_content[$i]}" | tr "[A-Z]" "[a-z]") 	
+		
+		# use mv command to make changes
+		mv -nT "${dir_content[$i]}" $rep_un
+
+	done
+
+}
+
+depends()
+{
+if [[ $(type -P $@ &>/dev/null; echo $?) = 0 ]]; then
+   	return 0 
+else 
+	return 1
+fi
+}
+
+readblk()
+{
+if [[ ! $1 ]] || [[ $1 = "--help" ]];then
+printf "\
+Usage: readblk [OPTIONS] [BLK_NAME] e.g /dev/sda1
+
+taking a glance look at the partitions
+	--help : show this help page and exit
+	-f, --fmgr : show files with file manager
+"
+return 1
+fi
+
+if [[ $1 = "--fmgr" ]] ||
+	[[ $1 = "-f" ]] ;then
+	declare -g fmgr=1
+else
+	declare -g fmgr=0
+fi
+
+if [[ $(depends tree more) ]] ;then
+	echo "install 'tree' 'more' commands"
+	return 1
+fi
+
+declare -a devs=$(ls -1 /dev/sd*)
+declare -a blk=()
+
+for i in ${devs[@]} ;do
+	if [[ $fmgr = 1 ]];then
+		if [[ $i = "$2" ]] ;then
+			blk+=$2
+			break
+		fi
+	else
+		if [[ $i = "$1" ]] ;then
+			blk+=$1
+			break
+		fi
+	fi
+done
+
+declare -a mnt=("/tmp/${blk:5}")
+if [[ ${blk} ]] ;then
+
+	mkdir ${mnt}
+	sudo mount "${blk}" "${mnt}"
+	
+	if [[ $fmgr = 1 ]];then
+		if [[ $(depends vim) ]];then
+			echo "install 'vim or fff' command"
+		else	
+			fff ${mnt} 2>/dev/null || vim ${mnt} 2>/dev/null
+		fi
+	else
+		tree -L 1 -C ${mnt} | more
+	fi
+
+	sudo umount "${mnt}"
+	rmdir ${mnt}
+
+else
+	echo "$1 not found in your system"
+fi
+
+}
+
+kps()
+{
+	ps=$(ps xac | grep -i $1 | head -n1 | tail -n1 | awk '{ print $5}')
+	if [[ $ps ]];then
+#		read -p "do you really want kill \"$ps\" [y/n]: " c
+#		if [[ $c = 'y' ]]; then
+			pid=$(ps xac | grep -i $1 | head -n1 | tail -n1 | awk '{ print $1 }')
+			kill $pid &>/dev/null
+			if [[ $? != 0 ]];then
+				echo "can't kill $ps"
+			else
+				echo "killed"
+			fi
+#		else
+#		   echo "ignored"
+#		fi	   
+	else
+		echo "process not found"
+	fi
+}
+
+inps()
+{
+	ps xac | grep -i $1
+}
+
+mnt()
+{
+	if [[ ! $1 ]];then
+		echo "Usage: mnt [BLOCK-DEVICE-NAME]"
+		echo "-c, --cd	for change current directory to mounted directory"
+		return 1
+	fi
+	if [[ $2 = "-c" ]] || [[ $2 = "--cd" ]];then
+		sudo mount /dev/$1 /mnt 
+		cd /mnt
+		return 1
+	fi
+	sudo mount /dev/$1 /mnt
+}
+
+umnt()
+{
+	sudo umount /mnt
+}
+
+chr()
+{
+	mnt sda3
+	sudo chroot /mnt
+}
+
+c()
+{
+	if [[ -d $1 ]];then
+		ls $1	
+	elif [[ -f $1 ]];then
+		less $1	
+	elif [[ -b $1 ]];then
+		readblk $1
+	else
+		echo "unknown"
+	fi
+}
+
+matchin()
+{
+	dir=$1
+	pttr=$2
+
+	if [[ ! $dir ]] || [[ $dir = "--help" ]] || [[ ! $pttr ]] ;then
+		echo "Usage: matchin [DIRECTORY] [PATTERN]"
+		echo "find your pattern in multiple text files"
+		return 1
+	fi
+	
+	declare -a list_files
+	list_files=$(find $dir -type f)
+
+	for file in ${list_files[@]} ;do
+		match=$(cat -n $file | grep $pttr)
+		if [[ $match ]];then
+			echo -e "file '$file':\n ${match[@]}" 
+			echo -e "-------------------------------------------------------------------" 
+		fi
+
+#		line_len=$(cat $file | wc -l)		
+#		for line in $(range 1 $line_len) ;do
+#			this_line=$(cat $file | head -n$line | tail -n1)
+#			find_pttr=$(echo $this_line | tr -d '\0' | grep -i $pttr )
+#			if [[ $find_pttr ]] ;then
+#				echo "'${this_line[@]}' in file '$file' line '$line'" # | grep --color=always ${this_line[@]} 2>/dev/null
+#				echo "----"
+#			fi
+#		done
+	done
+}
+findin()
+{
+	if [[ $1 == '--help' ]] ;then echo "findin file match" ;fi
+	for i in `ls -1 $1`;do x=$(cat $i | grep -i "$2");if [[ $x ]] ;then echo $i ;fi ;done
+}
+term()
+{
+	runner xfce4-terminal	
+}
+clp()
+{
+	xclip -sel clip
+}
+mktemp()
+{
+	cmd=$(which mktemp)
+	sfx=0
+	fname="$(printf $1 | cut -d. -f1)XXX"
+	if [[ $(printf $1 | grep --color=no -o "\." &>/dev/null ; printf $?) = 0 ]];then
+		sfx=".$(printf $1 | cut -d. -f2)"
+	fi
+	if [[ $sfx = 0 ]]; then
+		path=$($cmd)
+	else
+		path=$($cmd --suffix=$sfx --tmpdir $fname)
+	fi
+	cd $(dirname $path)
+	vim $path
+}
+irtime()
+{
+	links -dump https://www.bahesab.ir/time/today | grep "روز بعد" -A 6 | tail -n6 | head -n5
+	
+}

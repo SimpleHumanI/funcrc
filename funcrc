@@ -254,16 +254,6 @@ matchin()
 			echo -e "file '$file':\n ${match[@]}" 
 			echo -e "-------------------------------------------------------------------" 
 		fi
-
-#		line_len=$(cat $file | wc -l)		
-#		for line in $(range 1 $line_len) ;do
-#			this_line=$(cat $file | head -n$line | tail -n1)
-#			find_pttr=$(echo $this_line | tr -d '\0' | grep -i $pttr )
-#			if [[ $find_pttr ]] ;then
-#				echo "'${this_line[@]}' in file '$file' line '$line'" # | grep --color=always ${this_line[@]} 2>/dev/null
-#				echo "----"
-#			fi
-#		done
 	done
 }
 findin()

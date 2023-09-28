@@ -391,3 +391,8 @@ cats()
 		return 1
 	fi
 }
+
+ghcfg()
+{
+	ssh-add ~/.ssh/github	
+}
